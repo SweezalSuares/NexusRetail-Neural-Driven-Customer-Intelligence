@@ -1,0 +1,40 @@
+"""Metadata for the 11 prediction tasks (used by the pipeline and the app)."""
+
+TASKS = [
+    dict(id=1, key="churn", title="Churn Prediction", level="Customer", type="binary", icon="🚪",
+         question="Will the customer stop buying in the next 180 days?",
+         target="No order in the 180 days after the snapshot date (1 = churned)"),
+    dict(id=2, key="revenue_loss", title="Revenue Lost if Customer Leaves", level="Customer", type="regression", icon="💸",
+         question="How much revenue would we lose if this customer left?",
+         target="Revenue the customer generates in the next 180 days if retained (trained on retained customers). "
+                "Expected loss = churn probability x this value"),
+    dict(id=3, key="spending", title="Customer Spending", level="Customer", type="regression", icon="🛒",
+         question="How much will this customer spend in the next 180 days?",
+         target="Total order value in the next 180 days (0 if no order)"),
+    dict(id=4, key="profit", title="Customer Profit", level="Customer", type="regression", icon="📈",
+         question="How much profit will this customer generate in the next 180 days?",
+         target="Sum of profit_margin in the next 180 days (0 if no order)"),
+    dict(id=5, key="fav_category", title="Frequently Bought Items (Category)", level="Customer", type="multiclass", icon="🧺",
+         question="Which product category will the customer keep buying?",
+         target="Category with the highest spend in the next 180 days (customers who buy)"),
+    dict(id=6, key="return_risk", title="Return / Refund Risk", level="Order", type="binary", icon="↩️",
+         question="How likely is an order to be returned?",
+         target="returned = Yes (known after delivery; features are known at order time)"),
+    dict(id=7, key="active_duration", title="Active Duration", level="Customer", type="regression", icon="⏳",
+         question="For how many more days will the customer stay active?",
+         target="Days from the snapshot date to the customer's last order in the next 180 days (0 if churned)"),
+    dict(id=8, key="next_product", title="Next Product Recommendation", level="Order", type="multiclass", icon="🎁",
+         question="Which category will the customer buy next?",
+         target="Category of the customer's next order"),
+    dict(id=9, key="discount", title="Discount Sensitivity", level="Customer", type="binary", icon="🏷️",
+         question="Does the customer mostly buy when discounts are applied?",
+         target="At least 50% of the customer's next-180-day orders carried a discount"),
+    dict(id=10, key="loyalty", title="Customer Loyalty", level="Customer", type="multiclass", icon="💎",
+         question="How loyal will the customer be?",
+         target="Loyalty tier from next-180-day orders: Low (0), Medium (1), High (2+)"),
+    dict(id=11, key="next_purchase", title="Next Purchase Prediction", level="Order", type="regression", icon="📅",
+         question="When will the customer place the next order?",
+         target="Days until the next order (capped at 120 days)"),
+]
+TASK_BY_KEY = {t["key"]: t for t in TASKS}
+LOYALTY_LABELS = ["Low", "Medium", "High"]

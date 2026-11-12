@@ -1,0 +1,86 @@
+{
+  "quality": {
+    "rows": 34500,
+    "columns": 20,
+    "duplicates": 0,
+    "missing_values": 0,
+    "customers": 7903,
+    "products": 24912,
+    "date_range": [
+      "2023-09-12",
+      "2025-09-11"
+    ],
+    "return_rate": 0.05515942028985507,
+    "discounted_share": 0.45104347826086955,
+    "total_revenue": 5865293.050000001,
+    "total_profit": 970019.4099999999,
+    "total_matches_formula": 1.0,
+    "customers_with_changing_age": 0.9377451600657978,
+    "negative_profit_orders": 0.17692753623188406
+  },
+  "category": [
+    {
+      "category": "Beauty",
+      "revenue": 153019.38,
+      "profit": 49196.59,
+      "ret": 0.0378,
+      "disc": 0.0496,
+      "margin": 0.3215
+    },
+    {
+      "category": "Electronics",
+      "revenue": 3319206.5,
+      "profit": 344371.77,
+      "ret": 0.073,
+      "disc": 0.0511,
+      "margin": 0.1038
+    },
+    {
+      "category": "Fashion",
+      "revenue": 471545.8,
+      "profit": 128814.65,
+      "ret": 0.0828,
+      "disc": 0.0488,
+      "margin": 0.2732
+    },
+    {
+      "category": "Grocery",
+      "revenue": 82000.51,
+      "profit": -9187.96,
+      "ret": 0.0131,
+      "disc": 0.0488,
+      "margin": -0.112
+    },
+    {
+      "category": "Home",
+      "revenue": 1077681.52,
+      "profit": 262633.7,
+      "ret": 0.0565,
+      "disc": 0.0483,
+      "margin": 0.2437
+    },
+    {
+      "category": "Sports",
+      "revenue": 629825.54,
+      "profit": 160521.41,
+      "ret": 0.0494,
+      "disc": 0.0499,
+      "margin": 0.2549
+    },
+    {
+      "category": "Toys",
+      "revenue": 132013.8,
+      "profit": 33669.25,
+      "ret": 0.0494,
+      "disc": 0.0482,
+      "margin": 0.255
+    }
+  ],
+  "customer": {
+    "orders_mean": 4.3654308490446665,
+    "orders_median": 4.0,
+    "single_order_share": 0.060103758066557,
+    "gap_median_days": 89.0,
+    "top10pct_revenue_share": 0.3555904866509611
+  }
+}
