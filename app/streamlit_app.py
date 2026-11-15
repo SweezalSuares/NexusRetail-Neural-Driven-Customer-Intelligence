@@ -19,7 +19,7 @@ from src.tasks import LOYALTY_LABELS, TASK_BY_KEY, TASKS
 
 CUR = "$"  # change to "₹" etc. if your data uses another currency
 
-st.set_page_config(page_title="Customer Intelligence · MLP", page_icon="🌿", layout="wide",
+st.set_page_config(page_title="NexusRetail", page_icon="🌿", layout="wide",
                    initial_sidebar_state="expanded")
 ui.setup_plotly()
 ui.inject_css()
@@ -95,9 +95,8 @@ LEVEL = {k: v["signal"] for k, v in MET.items()}
 
 # ----------------------------------------------------------------------------- pages
 def page_overview():
-    ui.hero("🌿 Customer Intelligence Hub",
-            "11 ANN / multilayer-perceptron predictions on 34,500 e-commerce orders — churn, value, loyalty, "
-            "returns and next-best actions.")
+    ui.hero("NexusRetail",
+            "Neural Driven Customer Intelligence")
     c = st.columns(6)
     ui.kpi(c[0], "Revenue", money(DF.total_amount.sum()), f"{META['start_date']} → {META['end_date']}")
     ui.kpi(c[1], "Profit", money(DF.profit_margin.sum()), f"{DF.profit_margin.sum() / DF.total_amount.sum():.1%} margin")
@@ -116,7 +115,7 @@ def page_overview():
     a, b = st.columns([1.6, 1])
     fig = go.Figure()
     fig.add_scatter(x=m.month, y=m.Revenue, name="Revenue", line=dict(color=C.MINT, width=3), fill="tozeroy",
-                    fillcolor="rgba(62,219,180,.10)")
+                    fillcolor="rgba(217,189,133,.10)")
     fig.add_scatter(x=m.month, y=m.Profit, name="Profit", line=dict(color=C.TEAL, width=3))
     fig.update_layout(title="Monthly revenue & profit", height=340, legend=dict(orientation="h", y=1.12))
     a.plotly_chart(fig, width="stretch")
@@ -291,7 +290,7 @@ def page_customer():
 
 
 def page_segments():
-    ui.hero("🎯 Segments & Actions", "Prioritise retention using churn risk, loyalty and revenue at risk.")
+    ui.hero(" Segments & Actions", "Prioritise retention using churn risk, loyalty and revenue at risk.")
     a, b, c = st.columns(3)
     risk = a.multiselect("Churn risk band", ["High", "Medium", "Low"], default=["High", "Medium"])
     tiers = b.multiselect("Loyalty tier", LOYALTY_LABELS, default=LOYALTY_LABELS)
@@ -396,7 +395,7 @@ def _predict_one(models, key, frame):
 
 
 def page_whatif():
-    ui.hero("🧪 What-if Lab", "Change inputs and watch the neural networks respond.")
+    ui.hero(" What-if Lab", "Change inputs and watch the neural networks respond.")
     t1, t2, t3 = st.tabs(["↩️ Order return-risk simulator", "👤 Customer scenario", "➕ New customer"])
     with t1:
         with st.form("ret"):
@@ -542,7 +541,7 @@ def page_whatif():
 
 
 def page_models():
-    ui.hero("📊 Model Lab", "Architecture, training curves, evaluation and honest comparison with baselines.")
+    ui.hero(" Model Lab", "Architecture, training curves, evaluation and honest comparison with baselines.")
     rows = []
     for t in TASKS:
         m = MET[t["key"]]
@@ -628,7 +627,7 @@ def page_models():
 
 
 def page_about():
-    ui.hero("ℹ️ About this project", "Pipeline, methodology and how to reproduce.")
+    ui.hero("ℹ About this project", "Pipeline, methodology and how to reproduce.")
     st.markdown("""
 **Pipeline:** raw orders → cleaning & EDA → customer snapshot / order-level features → 11 Keras MLPs → temporal evaluation →
 scoring of all customers → this dashboard.
@@ -647,13 +646,13 @@ early stopping and learning-rate decay. Regression targets use a signed log tran
 """)
 
 
-PAGES = {"🏠 Overview": page_overview, "🔎 EDA Explorer": page_eda, "👤 Customer 360": page_customer,
-         "🎯 Segments & Actions": page_segments, "🧪 What-if Lab": page_whatif, "📊 Model Lab": page_models,
-         "ℹ️ About": page_about}
+PAGES = {" Overview": page_overview, " EDA Explorer": page_eda, " Customer 360": page_customer,
+         " Segments & Actions": page_segments, " What-if Lab": page_whatif, " Model Lab": page_models,
+         "ℹ About": page_about}
 
 with st.sidebar:
-    st.markdown("## 🌿 Customer Intelligence")
-    st.caption("MLP / ANN · Keras")
+    st.markdown("## NexusRetail")
+    st.caption("Neural Driven Customer Intelligence")
     page = st.radio("Navigate", list(PAGES), key="nav", label_visibility="collapsed")
     st.divider()
     st.caption(f"Data: {META['start_date']} → {META['end_date']}")
