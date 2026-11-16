@@ -10,11 +10,12 @@ CSS = f"""
 <style>
 html, body, [class*="css"] {{
     font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    color: {C.TEXT};
 }}
 
 .stApp {{
-    background: {C.DUSKY_BACKGROUND};
-    color: {C.SOFT_IVORY};
+    background: {C.CREAMY_BACKGROUND};
+    color: {C.TEXT};
 }}
 
 .block-container {{
@@ -24,27 +25,49 @@ html, body, [class*="css"] {{
 }}
 
 section[data-testid="stSidebar"] {{
-    background: linear-gradient(180deg, {C.CHARCOAL_LIGHT}, {C.CHARCOAL});
-    border-right: 1px solid {C.CHARCOAL_MID};
+    background: {C.COCOA_BROWN};
+    color: {C.SIDEBAR_SECONDARY};
+    border-right: 1px solid {C.BORDER};
+}}
+
+section[data-testid="stSidebar"] h2 {{
+    color: {C.CHAMPAGNE_GOLD};
+}}
+
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
+    color: {C.SIDEBAR_SECONDARY};
+}}
+
+section[data-testid="stSidebar"] [role="radiogroup"] label {{
+    color: {C.SIDEBAR_LINK};
+}}
+
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {{
+    color: {C.SIDEBAR_SECONDARY};
+}}
+
+.sidebar-user {{
+    color: {C.SIDEBAR_USER};
+    font-weight: 650;
+    margin-top: 12px;
 }}
 
 h1, h2, h3 {{
-    color: {C.SOFT_IVORY};
+    color: {C.TEXT};
     letter-spacing: -0.02em;
 }}
 
+a {{
+    color: {C.DEEP_ROSE};
+}}
+
 .hero {{
-    background: linear-gradient(
-        120deg,
-        {C.CHARCOAL_LIGHT},
-        {C.TEAL_DARK},
-        {C.CHARCOAL}
-    );
-    border: 1px solid {C.CHARCOAL_MID};
+    background: {C.CARD_BACKGROUND};
+    border: 1px solid {C.CHAMPAGNE_GOLD};
     border-radius: 18px;
     padding: 28px 30px;
     margin-bottom: 20px;
-    box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    box-shadow: 0 8px 28px rgba(59,42,36,.07);
 }}
 
 .hero h1 {{
@@ -55,13 +78,13 @@ h1, h2, h3 {{
 
 .hero p {{
     margin-top: 8px;
-    color: {C.SOFT_IVORY};
+    color: {C.SOFT_COCOA};
 }}
 
 .kpi {{
-    background: {C.CHARCOAL_LIGHT};
-    border: 1px solid {C.CHARCOAL_MID};
-    border-left: 4px solid {C.TEAL};
+    background: {C.CARD_BACKGROUND};
+    border: 1px solid {C.BORDER};
+    border-left: 4px solid {C.CHAMPAGNE_GOLD};
     border-radius: 14px;
     padding: 16px;
     height: 100%;
@@ -71,32 +94,32 @@ h1, h2, h3 {{
 .kpi:hover {{
     transform: translateY(-3px);
     border-left-color: {C.CHAMPAGNE_GOLD};
-    box-shadow: 0 8px 20px rgba(0,0,0,.2);
+    box-shadow: 0 8px 20px rgba(59,42,36,.10);
 }}
 
 .kpi .label {{
-    color: {C.MUTED};
+    color: {C.SOFT_COCOA};
     font-size: .78rem;
     text-transform: uppercase;
     letter-spacing: .06em;
 }}
 
 .kpi .value {{
-    color: {C.TEXT};
+    color: {C.DEEP_ROSE};
     font-size: 1.6rem;
     font-weight: 700;
     margin-top: 5px;
 }}
 
 .kpi .sub {{
-    color: {C.OLIVE};
+    color: {C.SOFT_COCOA};
     font-size: .8rem;
     margin-top: 4px;
 }}
 
 .card {{
-    background: {C.CHARCOAL_LIGHT};
-    border: 1px solid {C.CHARCOAL_MID};
+    background: {C.CARD_BACKGROUND};
+    border: 1px solid {C.BORDER};
     border-radius: 14px;
     padding: 18px;
     margin-bottom: 12px;
@@ -104,22 +127,22 @@ h1, h2, h3 {{
 }}
 
 .card h4 {{
-    color: {C.SOFT_IVORY};
+    color: {C.COCOA_BROWN};
     font-size: .95rem;
 }}
 
 .card .big {{
     font-size: 1.55rem;
     font-weight: 700;
-    color: {C.MINT};
+    color: {C.DEEP_ROSE};
 }}
 
 .card .big.muted {{
-    color: {C.MUTED};
+    color: {C.SOFT_COCOA};
 }}
 
 .card .q, .card .note {{
-    color: {C.MUTED};
+    color: {C.SOFT_COCOA};
     font-size: .8rem;
 }}
 
@@ -132,74 +155,115 @@ h1, h2, h3 {{
 }}
 
 .b-useful, .b-low {{
-    background: rgba(79,143,131,.16);
-    color: {C.MINT};
-    border: 1px solid {C.TEAL};
+    background: {C.SAGE_SOFT};
+    color: #3F5F48;
+    border: 1px solid {C.SAGE};
 }}
 
 .b-weak, .b-med {{
-    background: rgba(217,185,140,.12);
-    color: {C.CHAMPAGNE_GOLD};
+    background: {C.GOLD_SOFT};
+    color: #7A5A14;
     border: 1px solid {C.CHAMPAGNE_GOLD};
 }}
 
 .b-none {{
-    background: rgba(185,181,169,.10);
-    color: {C.MUTED};
-    border: 1px solid {C.CHARCOAL_MID};
+    background: {C.PANEL_BACKGROUND};
+    color: {C.SOFT_COCOA};
+    border: 1px solid {C.BORDER};
 }}
 
 .b-high {{
-    background: rgba(201,130,130,.14);
-    color: {C.DANGER};
-    border: 1px solid {C.DANGER};
+    background: {C.ROSE_SOFT};
+    color: #8A3A47;
+    border: 1px solid {C.MUTED_ROSE};
 }}
 
 .callout {{
-    background: rgba(217,185,140,.08);
-    border: 1px solid rgba(217,185,140,.3);
+    background: {C.GOLD_SOFT};
+    border: 1px solid {C.CHAMPAGNE_GOLD};
     border-left: 4px solid {C.CHAMPAGNE_GOLD};
     border-radius: 12px;
     padding: 13px 16px;
-    color: {C.SOFT_IVORY};
+    color: {C.COCOA_BROWN};
     margin: 8px 0 16px;
 }}
 
 .callout.ok {{
-    border-left-color: {C.TEAL};
-    background: rgba(79,143,131,.08);
+    border-left-color: {C.SAGE};
+    background: {C.SAGE_SOFT};
 }}
 
-.stTabs [data-baseweb="tab-list"] {{
-    gap: 8px;
+/* LOGIN AND SIGNUP NAVIGATION TABS */
+
+.stTabs [role="tab"] {{
+    background-color: #FAF5EF !important;
+    color: #79604D !important;
+    border: 1px solid #D8B8AD !important;
+    border-radius: 10px 10px 0 0 !important;
+    box-shadow: 0 2px 6px rgba(59,42,36,.08);
+    }}
+
+.stTabs [role="tab"] *,
+.stTabs [role="tab"] p {{
+    color: #79604D !important;
+    -webkit-text-fill-color: #79604D !important;
 }}
 
-.stTabs [data-baseweb="tab"] {{
-    background: {C.CHARCOAL_LIGHT};
-    border-radius: 9px 9px 0 0;
-    padding: 9px 16px;
-    color: {C.MUTED};
+.stTabs [role="tab"][aria-selected="true"] {{
+    background-color: #79604D !important;
+    color: #FAF5EF !important;
+    border-color: #79604D !important;
 }}
 
-.stTabs [aria-selected="true"] {{
-    background: {C.TEAL_DARK};
-    color: white;
+.stTabs [role="tab"][aria-selected="true"] *,
+.stTabs [role="tab"][aria-selected="true"] p {{
+    color: #FAF5EF !important;
+    -webkit-text-fill-color: #FAF5EF !important;
 }}
 
 .stButton > button,
 .stDownloadButton > button {{
-    background: {C.TEAL_DARK};
-    color: {C.TEXT};
-    border: 1px solid {C.TEAL};
+    background: {C.DEEP_ROSE};
+    color: {C.SOFT_IVORY};
+    border: 1px solid {C.DEEP_ROSE};
     border-radius: 10px;
     transition: .2s ease;
 }}
 
 .stButton > button:hover,
 .stDownloadButton > button:hover {{
-    background: {C.TEAL};
+    background: {C.COCOA_BROWN};
     border-color: {C.CHAMPAGNE_GOLD};
-    color: white;
+    color: {C.SOFT_IVORY};
+}}
+
+.stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div,
+.stTextArea textarea, .stDateInput input {{
+    background: {C.PANEL_BACKGROUND};
+    color: {C.TEXT};
+    border-color: {C.BORDER};
+}}
+
+.auth-shell {{
+    max-width: 760px;
+    margin: 4vh auto 0;
+    padding: 28px;
+    background: {C.COCOA_BROWN};
+    color: {C.HERO_TEXT};
+    border: 1px solid {C.CHAMPAGNE_GOLD};
+    border-radius: 20px;
+    box-shadow: 0 12px 36px rgba(59,42,36,.14);
+}}
+
+.auth-brand {{
+    color: {C.CHAMPAGNE_GOLD};
+    font-size: 1.8rem;
+    font-weight: 750;
+    letter-spacing: -.03em;
+}}
+
+.auth-shell p {{
+    color: {C.HERO_TEXT};
 }}
 
 footer {{
@@ -207,17 +271,22 @@ footer {{
 }}
 
 .app-footer {{
-    color: {C.MUTED};
+    color: {C.SOFT_COCOA};
     font-size: .78rem;
     text-align: center;
     margin-top: 36px;
     padding-top: 14px;
-    border-top: 1px solid {C.CHARCOAL_MID};
+    border-top: 1px solid {C.BORDER};
 }}
 
 @media (max-width: 760px) {{
     .hero h1 {{ font-size: 1.4rem; }}
     .kpi .value {{ font-size: 1.25rem; }}
+}}
+.stTextInput label,
+.stTextInput label p,
+.stTextInput label span {{
+    color: {C.COCOA_BROWN} !important;
 }}
 </style>
 """
@@ -226,12 +295,16 @@ def setup_plotly():
     t = go.layout.Template()
     t.layout = go.Layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=C.TEXT, family="Inter, Segoe UI, sans-serif"),
+        font=dict(color=C.TEXT, family="Inter, Segoe UI, sans-serif", size=13),
         colorway=C.PALETTE, margin=dict(l=10, r=10, t=44, b=10),
-        xaxis=dict(gridcolor=C.CHARCOAL_MID, zerolinecolor=C.CHARCOAL_MID, linecolor=C.CHARCOAL_MID),
-        yaxis=dict(gridcolor=C.CHARCOAL_MID, zerolinecolor=C.CHARCOAL_MID, linecolor=C.CHARCOAL_MID),
-        legend=dict(bgcolor="rgba(0,0,0,0)"), title=dict(font=dict(size=15)),
-        hoverlabel=dict(bgcolor=C.CHARCOAL_LIGHT, font_color=C.TEXT),
+        xaxis=dict(gridcolor="#EFE2D6", zerolinecolor="#EFE2D6", linecolor=C.BORDER,
+                   tickfont=dict(color=C.TEXT, size=13), title_font=dict(color=C.SOFT_COCOA, size=12)),
+        yaxis=dict(gridcolor="#EFE2D6", zerolinecolor="#EFE2D6", linecolor=C.BORDER,
+                   tickfont=dict(color=C.TEXT, size=13), title_font=dict(color=C.SOFT_COCOA, size=12)),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=C.TEXT, size=13)),
+        title=dict(font=dict(size=17, family="Fraunces, Georgia, serif", color=C.TEXT),
+                   x=0, xanchor="left"),
+        hoverlabel=dict(bgcolor=C.CARD_BACKGROUND, bordercolor=C.BORDER, font_color=C.TEXT),
     )
     pio.templates["nexus_retail"] = t
     pio.templates.default = "nexus_retail"
@@ -239,7 +312,7 @@ def setup_plotly():
 
 def inject_css():
     st.markdown(CSS, unsafe_allow_html=True)
-
+    
 
 def hero(title, subtitle):
     st.markdown(f'<div class="hero"><h1>{title}</h1><p>{subtitle}</p></div>', unsafe_allow_html=True)

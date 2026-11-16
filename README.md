@@ -2,7 +2,7 @@
 
 End-to-end project on `ecommerce_sales_34500.csv` (34,500 orders, 7,903 customers, Sep 2023 – Sep 2025):
 EDA → feature engineering → **11 Keras MLP models** → temporal evaluation → customer scoring → **Streamlit dashboard**
-(Mint + Teal + Charcoal theme).
+(Champagne gold, cocoa brown, blush beige, soft ivory, and muted rose theme).
 
 ## Quick start (Windows / macOS / Linux)
 
@@ -16,6 +16,36 @@ streamlit run app/streamlit_app.py
 Trained models and scores are already included, so the app runs immediately. To rebuild everything from the CSV
 (about 2 minutes on a laptop CPU): `python run_pipeline.py`
 (`--skip-eda` to skip figures, `--skip-train` to only re-score). Windows shortcuts: `run_pipeline.bat`, `run_app.bat`.
+
+## Accounts and dashboard roles
+
+The app opens with sign-in and registration for customer and retail-admin accounts. Customer accounts can place
+demo orders, review their own locally saved order history, and view personal spending analytics. The admin role
+retains the existing Overview, EDA Explorer, Customer 360, Segments & Actions, What-if Lab, Model Lab, and About
+pages, including all 11 existing predictions.
+
+Customer accounts can register directly. Admin registration is invite-code protected: set
+`NEXUS_ADMIN_INVITE_CODE` before starting Streamlit, then provide that code on the Admin registration tab.
+For example, in PowerShell:
+
+```powershell
+$env:NEXUS_ADMIN_INVITE_CODE = "your-private-invite-code"
+streamlit run app/streamlit_app.py
+```
+
+Accounts and demo orders are stored in the ignored local file `outputs/app_data.sqlite3` (override its path with
+`NEXUS_APP_DB`). Customer registrations receive a new local customer ID; they are not automatically linked to a
+customer in the historical training dataset. Customers can mark their orders returned from order history; order and
+return status are shared with the admin **Orders & Returns** page.
+
+The order records are appended to model input without changing the source CSV. All 11 models retrain in a background
+process after **100 new local orders are at least 180 days old**, or 100 returned orders have mature 180-day outcome
+windows. Training uses updated temporal splits and stores a versioned model, reports, and customer scores; the current
+version stays active until the batch is complete. Tasks without sufficient training/hold-out labels keep their
+previous model and are identified in Model Lab. Training runs are triggered while the app is being used. Demo orders
+use estimated fulfilment and profit fields.
+There is no live catalogue, inventory reservation, or payment processing. Do not expose this local prototype as a
+production authentication or commerce service.
 
 ## The 11 predictions
 
@@ -49,7 +79,9 @@ early stopping, learning-rate decay. Small nets (64-32, 16-8 for returns) becaus
 
 * Customer models: features from orders ≤ snapshot date, targets from the next 180 days. Train snapshots
   2024-03-14 / 2024-06-13 / 2024-09-12, **hold-out snapshot 2025-03-13** (its window ends before the data does).
-* Order models: split by date with an embargo gap; return-history features use only prior orders.
+* Order models: split by date with an embargo gap; return-history features use prior orders. For live records,
+  return-risk training and hold-out include only orders whose 180-day outcome window has matured, so recent
+  unreturned orders are not treated as negative labels.
 * Every model is compared with a Logistic / Ridge baseline and naive predictors; ROC-AUC has a bootstrap 95% CI.
 
 ## Results — please read
@@ -75,8 +107,10 @@ reliability badge next to every prediction so weak models are never over-read.
 ## Project structure
 
 ```
-app/streamlit_app.py   7-page dashboard (Overview, EDA, Customer 360, Segments, What-if, Model Lab, About);
-                       What-if includes an all-predictions new-customer cold-start form
+app/streamlit_app.py   role-based customer shop and 7-page retail admin dashboard; What-if includes an
+                       all-predictions new-customer cold-start form
+app/accounts.py        local SQLite accounts, password hashing, customer orders, returns, and training state
+app/retraining.py      background, threshold-triggered training and versioned model activation
 app/ui.py              theme CSS, KPI cards, badges, Plotly template
 src/features.py        customer snapshot + order-level features and targets
 src/models.py          Keras MLP builder, training, evaluation, baselines

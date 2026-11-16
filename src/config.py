@@ -37,51 +37,44 @@ REGIONS = ["Central", "East", "North", "South", "West"]
 GENDERS = ["Female", "Male", "Other"]
 
 
-# ---- Theme: Dusky Botanical -----------------------------------------------
-# Primary: Muted Teal
-# Secondary: Olive
-# Accent: Champagne Gold
-# Background: Dusky Charcoal
-# Cards: Botanical Charcoal
-# Text: Soft Ivory
+# ---- Theme: soft ivory, cocoa and rose ------------------------------------
+CREAMY_BACKGROUND = "#FBF7EF"
+PANEL_BACKGROUND = "#F3E6DA"
+BORDER = "#E3D0C2"
+CARD_BACKGROUND = "#FFFDF9"
+COCOA_BROWN = "#3B2A24"
+SOFT_COCOA = "#7A6458"
+CHAMPAGNE_GOLD = "#C9A66B"
+GOLD_SOFT = "#F1E5C8"
+MUTED_ROSE = "#B76E79"
+DEEP_ROSE = "#9C5560"
+ROSE_SOFT = "#F3DEE0"
+SAGE = "#5F7F68"
+SAGE_SOFT = "#E3ECE4"
+SIDEBAR_USER = "#F3E9DC"
+SIDEBAR_SECONDARY = "#CDBBA9"
+SIDEBAR_LINK = "#E9D8B4"
+HERO_TEXT = "#E8DACB"
+TEXT = "#3B2A24"
 
-# Main backgrounds
-DUSKY_BACKGROUND = "#252A29"
-CHARCOAL = "#202523"
-CHARCOAL_LIGHT = "#303A37"
-CHARCOAL_MID = "#414B46"
+# Legacy aliases keep existing charts and cards on the updated palette.
+DUSKY_BACKGROUND = CREAMY_BACKGROUND
+SOFT_IVORY = CARD_BACKGROUND
+BLUSH_BEIGE = PANEL_BACKGROUND
+CHARCOAL = PANEL_BACKGROUND
+CHARCOAL_LIGHT = CARD_BACKGROUND
+CHARCOAL_MID = BORDER
+TEAL = SAGE
+TEAL_DARK = DEEP_ROSE
+OLIVE = SAGE
+MUTED = SOFT_COCOA
+MINT = CHAMPAGNE_GOLD
+MINT_LIGHT = GOLD_SOFT
+MINT_DARK = SAGE
+WARN = CHAMPAGNE_GOLD
+DANGER = DEEP_ROSE
 
-# Brand colours
-TEAL = "#4F8F83"
-TEAL_DARK = "#386F65"
-
-# Accent colours
-OLIVE = "#A3A66A"
-CHAMPAGNE_GOLD = "#D9B98C"
-COCOA_BROWN = "#80644F"
-BLUSH_BEIGE = "#B9A99A"
-MUTED_ROSE = "#B58F89"
-
-# Text colours
-SOFT_IVORY = "#F4EFE5"
-TEXT = "#FAF8F2"
-MUTED = "#B9B5A9"
-
-# Status colours
-MINT = "#82B6A1"
-MINT_LIGHT = "#A9C8B8"
-MINT_DARK = "#4F8F83"
-
-WARN = "#D9B98C"
-DANGER = "#C98282"
-
-# Chart colours
 PALETTE = [
-    "#4F8F83",  # Muted Teal
-    "#A3A66A",  # Olive
-    "#D9B98C",  # Champagne Gold
-    "#B58F89",  # Muted Rose
-    "#80644F",  # Cocoa Brown
-    "#A9C8B8",  # Soft Sage
-    "#E5D8C5",  # Warm Cream
+    DEEP_ROSE, CHAMPAGNE_GOLD, SAGE, COCOA_BROWN,
+    MUTED_ROSE, "#B99579", "#D7C2AC",
 ]
