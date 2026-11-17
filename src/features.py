@@ -11,15 +11,8 @@ LOG_COLS = ["total_spend", "avg_order_value", "max_order_value", "avg_price",
 SIGNED_LOG_COLS = ["total_profit", "avg_profit"]
 
 
-def load_data(path=DATA_PATH, include_live=True) -> pd.DataFrame:
+def load_data(path=DATA_PATH) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=["order_date"])
-    if include_live:
-        from app.accounts import get_training_orders
-
-        live = get_training_orders()
-        if live:
-            df = pd.concat([df, pd.DataFrame(live)], ignore_index=True)
-    df["order_date"] = pd.to_datetime(df["order_date"], errors="raise")
     df = df.drop_duplicates("order_id")
     df = df.sort_values(["customer_id", "order_date", "order_id"]).reset_index(drop=True)
     df["is_returned"] = (df["returned"].str.strip().str.lower() == "yes").astype(int)

@@ -15,6 +15,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-eda", action="store_true")
     ap.add_argument("--skip-train", action="store_true", help="reuse saved models, only re-score")
+    ap.add_argument("--seed", type=int, default=C.SEED, help="random seed used when training models")
     args = ap.parse_args()
 
     df = load_data()
@@ -22,7 +23,7 @@ def main():
     if not args.skip_eda:
         print("== EDA =="); run_eda(df)
     if not args.skip_train:
-        print("== Training 11 MLP models =="); train_all(df)
+        print("== Training 11 MLP models =="); train_all(df, seed=args.seed)
     print("== Scoring customers ==")
     scores, extra = score_customers(df, load_models())
     mpath = C.REPORTS_DIR / "metrics.json"

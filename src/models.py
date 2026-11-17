@@ -63,9 +63,9 @@ def _downsample(a, n=120):
 
 
 def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, cols,
-                       class_names=None, hidden=(128, 64, 32), dropout=0.3):
+                       class_names=None, hidden=(128, 64, 32), dropout=0.3, seed=SEED):
     """Train one MLP, evaluate on the temporal hold-out and return (model, bundle, metrics, curves)."""
-    set_seed()
+    set_seed(seed)
     Xtr_raw, Xte_raw = to_matrix(Xtr_df, cols), to_matrix(Xte_df, cols)
     scaler = StandardScaler().fit(Xtr_raw)
     Xtr_s, Xte_s = scaler.transform(Xtr_raw).astype("float32"), scaler.transform(Xte_raw).astype("float32")
@@ -81,7 +81,7 @@ def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, c
     else:
         ytr_m = ytr.astype("float32")
 
-    gss = GroupShuffleSplit(n_splits=1, test_size=0.15, random_state=SEED)
+    gss = GroupShuffleSplit(n_splits=1, test_size=0.15, random_state=seed)
     tr_idx, va_idx = next(gss.split(Xtr_s, groups=groups))
     cw = None  # no class re-weighting: keeps predicted probabilities calibrated
 
@@ -99,14 +99,22 @@ def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, c
     if task == "binary":
         pv = model.predict(Xtr_s[va_idx], verbose=0).ravel()
         grid = np.linspace(0.05, 0.95, 91)
-        f1s = [f1_score(ytr_m[va_idx], pv >= t, zero_division=0) for t in grid]
-        thr = float(grid[int(np.argmax(f1s))])
+        threshold_scores = [
+            (
+                accuracy_score(ytr_m[va_idx], pv >= t),
+                f1_score(ytr_m[va_idx], pv >= t, zero_division=0),
+                -abs(float(t) - 0.5),
+                float(t),
+            )
+            for t in grid
+        ]
+        thr = max(threshold_scores)[3]
         bundle["threshold"] = thr
         p = model.predict(Xte_s, verbose=0).ravel()
         pred = (p >= thr).astype(int)
         base = LogisticRegression(max_iter=500).fit(Xtr_s, ytr_m)
         pb = base.predict_proba(Xte_s)[:, 1]
-        rs = np.random.RandomState(SEED)
+        rs = np.random.RandomState(seed)
         boots = []
         for _ in range(300):
             ix = rs.randint(0, len(yte), len(yte))
@@ -121,7 +129,7 @@ def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, c
                        threshold=thr, prevalence=float(np.mean(yte)), roc_auc_ci=auc_ci,
                        baseline_roc_auc=float(roc_auc_score(yte, pb)),
                        baseline_pr_auc=float(average_precision_score(yte, pb)),
-                       baseline_name="Logistic Regression")
+                       baseline_name="Logistic Regression", threshold_objective="validation_accuracy")
         curves.update(roc=dict(fpr=_downsample(fpr), tpr=_downsample(tpr)),
                       roc_baseline=dict(fpr=_downsample(fpb), tpr=_downsample(tpb)),
                       confusion=confusion_matrix(yte, pred).tolist())
@@ -135,6 +143,8 @@ def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, c
         maj = np.bincount(ytr_m.astype(int)).argmax()
         metrics.update(accuracy=float(accuracy_score(yte_i, pred)), top3_accuracy=float(top3),
                        macro_f1=float(f1_score(yte_i, pred, average="macro")),
+                       precision=float(precision_score(yte_i, pred, average="macro", zero_division=0)),
+                       recall=float(recall_score(yte_i, pred, average="macro", zero_division=0)),
                        baseline_accuracy=float(accuracy_score(yte_i, pb)),
                        majority_accuracy=float(np.mean(yte_i == maj)),
                        random_accuracy=float(1 / len(class_names)), baseline_name="Logistic Regression")
@@ -154,7 +164,7 @@ def train_and_evaluate(key, task, Xtr_df, ytr, Xte_df, yte, groups, to_matrix, c
                        baseline_name="Ridge Regression",
                        mean_mae=float(mean_absolute_error(yte, mean_pred)),
                        target_mean=float(np.mean(yte)), target_median=float(np.median(yte)))
-        rs = np.random.RandomState(SEED)
+        rs = np.random.RandomState(seed)
         idx = rs.choice(len(yte), size=min(500, len(yte)), replace=False)
         curves.update(scatter=dict(actual=yte[idx].tolist(), pred=pred[idx].tolist()))
     return model, bundle, metrics, curves

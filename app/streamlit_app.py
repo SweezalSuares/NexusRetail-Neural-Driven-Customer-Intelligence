@@ -1,8 +1,6 @@
 """Customer Intelligence dashboard (Streamlit). Run:  streamlit run app/streamlit_app.py"""
 import json
 import sys
-from datetime import date
-from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +12,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-import accounts
-import retraining
 import ui
 from src import config as C
 from src.features import build_customer_dataset, customer_features, load_data, to_matrix
@@ -23,44 +19,30 @@ from src.tasks import LOYALTY_LABELS, TASK_BY_KEY, TASKS
 
 CUR = "$"  # change to "₹" etc. if your data uses another currency
 
-st.set_page_config(page_title="NexusRetail", page_icon="🌿", layout="wide",
-                   initial_sidebar_state="expanded")
+st.set_page_config(page_title="NexusRetail", layout="wide", initial_sidebar_state="expanded")
 ui.setup_plotly()
 ui.inject_css()
 
 
 # ----------------------------------------------------------------------------- data
 @st.cache_data(show_spinner="Loading data…")
-def get_df(data_version="0"):
-    return load_data(include_live=True)
+def get_df():
+    return load_data()
 
 
 @st.cache_data
-def get_reference_df():
-    return load_data(include_live=False)
-
-
-def versioned_path(root, version, filename):
-    if version:
-        return root / "versions" / version / filename
-    return root / filename
+def get_scores():
+    return pd.read_csv(C.OUT_DIR / "customer_scores.csv", parse_dates=["last_order_date", "next_purchase_date"])
 
 
 @st.cache_data
-def get_scores(model_version=""):
-    path = (C.OUT_DIR / "score_versions" / model_version / "customer_scores.csv"
-            if model_version else C.OUT_DIR / "customer_scores.csv")
-    return pd.read_csv(path, parse_dates=["last_order_date", "next_purchase_date"])
+def get_metrics():
+    return json.loads((C.REPORTS_DIR / "metrics.json").read_text())
 
 
 @st.cache_data
-def get_metrics(model_version=""):
-    return json.loads(versioned_path(C.REPORTS_DIR, model_version, "metrics.json").read_text())
-
-
-@st.cache_data
-def get_curves(model_version=""):
-    return json.loads(versioned_path(C.REPORTS_DIR, model_version, "curves.json").read_text())
+def get_curves():
+    return json.loads((C.REPORTS_DIR / "curves.json").read_text())
 
 
 @st.cache_data
@@ -69,19 +51,15 @@ def get_eda():
 
 
 @st.cache_data
-def get_latest_features(data_version="0"):
-    df = get_df(data_version)
+def get_latest_features():
+    df = get_df()
     return customer_features(df, df["order_date"].max())
 
 
 @st.cache_data
-def get_diagnostics(data_version="0"):
-    df = get_df(data_version)
-    if df["customer_id"].astype(str).str.startswith("LOCAL-").any():
-        test_snapshot = (df["order_date"].max().normalize() - pd.Timedelta(days=C.HORIZON_DAYS)).date()
-    else:
-        test_snapshot = C.TEST_SNAPSHOT
-    te = build_customer_dataset(df, test_snapshot)
+def get_diagnostics():
+    df = get_df()
+    te = build_customer_dataset(df, C.TEST_SNAPSHOT)
     d = df.sort_values(["customer_id", "order_date"])
     gap = d.groupby("customer_id")["order_date"].diff().dt.days.dropna()
     prev_cat = d.groupby("customer_id")["category"].shift()
@@ -94,106 +72,56 @@ def get_diagnostics(data_version="0"):
     )
 
 
-@st.cache_resource(show_spinner="Loading neural networks…")
-def get_models(model_version=""):
-    from src.pipeline import load_models
-    model_dir = C.MODELS_DIR / "versions" / model_version if model_version else C.MODELS_DIR
-    return load_models(model_dir)
+@st.cache_resource(show_spinner="Loading model…")
+def get_model(key):
+    import joblib
+    import keras
+
+    return (keras.models.load_model(C.MODELS_DIR / f"{key}.keras"),
+            joblib.load(C.MODELS_DIR / f"{key}_bundle.joblib"))
 
 
 def money(x):
     return f"{CUR}{x:,.0f}"
 
 
-def page_auth():
-    st.markdown('<div class="auth-shell"><div class="auth-brand">NexusRetail</div>'
-                '<p>Customer intelligence, thoughtfully designed.</p></div>', unsafe_allow_html=True)
-    sign_in, customer_signup, admin_signup = st.tabs(
-        ["Sign in", "Create customer account", "Admin registration"]
-    )
-    with sign_in:
-        with st.form("sign_in"):
-            email = st.text_input("Email", key="login_email")
-            password = st.text_input("Password", type="password", key="login_password")
-            submitted = st.form_submit_button("Sign in", type="primary", width="stretch")
-        if submitted:
-            user = accounts.authenticate(email, password)
-            if user is None:
-                st.error("Email or password is incorrect.")
-            else:
-                st.session_state["account"] = user
-                st.rerun()
-    with customer_signup:
-        with st.form("customer_signup"):
-            name = st.text_input("Your name", key="customer_name")
-            email = st.text_input("Email address", key="customer_email")
-            password = st.text_input("Password (at least 10 characters)", type="password",
-                                     key="customer_password")
-            confirm = st.text_input("Confirm password", type="password", key="customer_confirm")
-            profile = st.columns(3)
-            age = profile[0].slider("Age", 18, 100, 35, key="customer_age")
-            gender = profile[1].selectbox("Gender", C.GENDERS, key="customer_gender")
-            region = profile[2].selectbox("Region", C.REGIONS, key="customer_region")
-            submitted = st.form_submit_button("Create customer account", type="primary", width="stretch")
-        if submitted:
-            if password != confirm:
-                st.error("The passwords do not match.")
-            else:
-                try:
-                    st.session_state["account"] = accounts.register_user(
-                        email, name, password, "customer", age=age, gender=gender, region=region
-                    )
-                except ValueError as exc:
-                    st.error(str(exc))
-                else:
-                    st.rerun()
-    with admin_signup:
-        st.caption("Admin accounts require an invite code configured by the application owner.")
-        with st.form("admin_signup"):
-            name = st.text_input("Admin name", key="admin_name")
-            email = st.text_input("Admin email", key="admin_email")
-            password = st.text_input("Password (at least 10 characters)", type="password",
-                                     key="admin_password")
-            confirm = st.text_input("Confirm password", type="password", key="admin_confirm")
-            invite = st.text_input("Admin invite code", type="password", key="admin_invite")
-            submitted = st.form_submit_button("Create admin account", type="primary", width="stretch")
-        if submitted:
-            if password != confirm:
-                st.error("The passwords do not match.")
-            else:
-                try:
-                    st.session_state["account"] = accounts.register_user(
-                        email, name, password, "admin", invite
-                    )
-                except ValueError as exc:
-                    st.error(str(exc))
-                else:
-                    st.rerun()
-    st.caption("Prototype accounts and orders are stored locally on this machine. No payment is processed.")
-
-
-accounts.initialize_db()
-if "account" not in st.session_state:
-    page_auth()
-    ui.footer()
+try:
+    DF, SCORES, METRICS = get_df(), get_scores(), get_metrics()
+except FileNotFoundError:
+    st.error("Model outputs not found. Run `python run_pipeline.py` first, then reload this page.")
     st.stop()
+META, MET = METRICS["meta"], METRICS["metrics"]
+END = DF["order_date"].max()
+LEVEL = {k: v["signal"] for k, v in MET.items()}
 
 
-account = st.session_state["account"]
-MODEL_VERSION = accounts.get_state("model_version")
-DATA_VERSION = accounts.get_state("data_version", default="0")
-retraining.maybe_start_retraining()
-if account["role"] == "admin":
-    try:
-        DF = get_df(DATA_VERSION)
-        SCORES = get_scores(MODEL_VERSION)
-        METRICS = get_metrics(MODEL_VERSION)
-    except FileNotFoundError:
-        st.error("Model outputs not found. Run `python run_pipeline.py` first, then reload this page.")
-        st.stop()
-    META, MET = METRICS["meta"], METRICS["metrics"]
-    END = DF["order_date"].max()
-    LEVEL = {k: v["signal"] for k, v in MET.items()}
+def classification_task_metrics():
+    rows = []
+    for task in TASKS:
+        metrics = MET[task["key"]]
+        if metrics["task"] == "binary":
+            precision, recall, f1 = metrics["precision"], metrics["recall"], metrics["f1"]
+            baseline_accuracy = max(metrics["prevalence"], 1 - metrics["prevalence"])
+        elif metrics["task"] == "multiclass":
+            matrix = np.asarray(get_curves()[task["key"]]["confusion"], dtype=float)
+            true_positive = np.diag(matrix)
+            precision_by_class = np.divide(true_positive, matrix.sum(axis=0),
+                                           out=np.zeros_like(true_positive), where=matrix.sum(axis=0) != 0)
+            recall_by_class = np.divide(true_positive, matrix.sum(axis=1),
+                                        out=np.zeros_like(true_positive), where=matrix.sum(axis=1) != 0)
+            f1_by_class = np.divide(2 * precision_by_class * recall_by_class,
+                                    precision_by_class + recall_by_class,
+                                    out=np.zeros_like(true_positive),
+                                    where=(precision_by_class + recall_by_class) != 0)
+            precision, recall, f1 = (float(precision_by_class.mean()), float(recall_by_class.mean()),
+                                     float(f1_by_class.mean()))
+            baseline_accuracy = max(metrics["majority_accuracy"], metrics["baseline_accuracy"])
+        else:
+            continue
+        rows.append({"Task": task["title"], "Accuracy": metrics["accuracy"], "Precision": precision,
+                     "Recall": recall, "F1": f1, "Baseline accuracy": baseline_accuracy})
+    frame = pd.DataFrame(rows)
+    return frame, frame[["Accuracy", "Precision", "Recall", "F1"]].mean()
 
 
 # ----------------------------------------------------------------------------- pages
@@ -208,11 +136,17 @@ def page_overview():
     ui.kpi(c[4], "Return rate", f"{DF.is_returned.mean():.1%}", f"{int(DF.is_returned.sum()):,} returns")
     ui.kpi(c[5], "Discounted orders", f"{DF.is_discounted.mean():.0%}", f"avg {DF.discount.mean():.1%} off")
     st.write("")
-    n_none = sum(v == "None" for v in LEVEL.values())
-    ui.callout(f"<b>Honest model report:</b> on a strict temporal hold-out, {n_none} of 11 models perform at chance "
-               "level (they do not beat a naive baseline). Diagnostics on the <b>Model Lab</b> page show why: in this "
-               "dataset a customer's past behaviour does not predict their future behaviour. Every prediction in the "
-               "app carries a reliability badge so it is never over-read.")
+    st.subheader("Classification performance")
+    task_metrics, avg_metrics = classification_task_metrics()
+    k = st.columns(4)
+    for col, metric in zip(k, ["Accuracy", "Precision", "Recall", "F1"]):
+        ui.kpi(col, f"Mean task {metric.lower()}", f"{avg_metrics[metric]:.1%}")
+    st.caption("Unweighted mean across classification tasks. Binary precision/recall use the positive class; "
+               "multiclass scores use macro averages. Baseline accuracy is the best available majority/logistic baseline.")
+    st.dataframe(task_metrics, width="stretch", hide_index=True, column_config={
+        metric: st.column_config.NumberColumn(metric, format="percent")
+        for metric in ["Accuracy", "Precision", "Recall", "F1", "Baseline accuracy"]
+    })
     m = DF.assign(month=DF.order_date.dt.to_period("M").dt.to_timestamp()).groupby("month").agg(
         Revenue=("total_amount", "sum"), Profit=("profit_margin", "sum")).reset_index()
     a, b = st.columns([1.6, 1])
@@ -229,13 +163,13 @@ def page_overview():
     cols = st.columns(4)
     for i, t in enumerate(TASKS):
         lvl = LEVEL[t["key"]]
-        cols[i % 4].markdown(f'<div class="card"><h4>{t["icon"]} #{t["id"]} {t["title"]}</h4>'
+        cols[i % 4].markdown(f'<div class="card"><h4>#{t["id"]} {t["title"]}</h4>'
                              f'{ui.signal_badge(lvl)}<div class="note">{MET[t["key"]]["signal_note"]}</div></div>',
                              unsafe_allow_html=True)
 
 
 def page_eda():
-    ui.hero("🔎 EDA Explorer", "Slice the data and explore revenue, products, customers, discounts and returns.")
+    ui.hero("EDA Explorer", "Slice the data and explore revenue, products, customers, discounts and returns.")
     with st.expander("Filters", expanded=True):
         f1, f2, f3, f4 = st.columns(4)
         dr = f1.date_input("Order dates", (DF.order_date.min().date(), END.date()),
@@ -319,27 +253,27 @@ def page_eda():
         ui.callout(f"<b>Data note:</b> {q['customers_with_changing_age']:.0%} of customers appear with more than one age, "
                    "so age, gender and region are not stable customer attributes in this dataset.")
         st.dataframe(f.head(500), width="stretch")
-        st.download_button("⬇️ Download filtered data (CSV)", f.to_csv(index=False).encode(), "filtered_orders.csv", "text/csv")
+        st.download_button("Download filtered data (CSV)", f.to_csv(index=False).encode(), "filtered_orders.csv", "text/csv")
 
 
 def _pick_random():
     st.session_state["cust"] = SCORES.customer_id.sample(1).iloc[0]
-    st.toast("Random customer selected", icon="🎲")
+    st.toast("Random customer selected")
 
 
 def _pick_risky():
     st.session_state["cust"] = SCORES.sort_values("revenue_at_risk", ascending=False).customer_id.iloc[0]
-    st.toast("Highest revenue-at-risk customer selected", icon="🔥")
+    st.toast("Highest revenue-at-risk customer selected")
 
 
 def page_customer():
-    ui.hero("👤 Customer 360", "All 11 predictions for one customer, with reliability badges and history.")
+    ui.hero("Customer 360", "All 11 predictions for one customer, with reliability badges and history.")
     ids = SCORES.customer_id.sort_values().tolist()
     st.session_state.setdefault("cust", ids[0])
     a, b, c = st.columns([3, 1, 1.4])
     a.selectbox("Customer ID", ids, key="cust", help="Type to search")
-    b.button("🎲 Random", on_click=_pick_random, width="stretch")
-    c.button("🔥 Top revenue at risk", on_click=_pick_risky, width="stretch")
+    b.button("Random", on_click=_pick_random, width="stretch")
+    c.button("Top revenue at risk", on_click=_pick_risky, width="stretch")
     r = SCORES[SCORES.customer_id == st.session_state["cust"]].iloc[0]
     hist = DF[DF.customer_id == r.customer_id]
     k = st.columns(5)
@@ -370,7 +304,7 @@ def page_customer():
     cols = st.columns(4)
     for i, (key, value, note) in enumerate(cards):
         t = TASK_BY_KEY[key]
-        ui.pred_card(cols[i % 4], t["icon"], f"#{t['id']} {t['title']}", t["question"], value, note, LEVEL[key])
+        ui.pred_card(cols[i % 4], f"#{t['id']} {t['title']}", t["question"], value, note, LEVEL[key])
     ui.callout("Badges show how much each model can be trusted on unseen future data. “At chance level” means the "
                "value is indicative only (it is close to the dataset average).")
     a, b = st.columns(2)
@@ -388,119 +322,12 @@ def page_customer():
                           color_discrete_sequence=C.PALETTE), width="stretch")
     with st.expander("Order history table"):
         st.dataframe(hist.drop(columns=["is_returned", "is_discounted", "gross_amount"]), width="stretch")
-    st.download_button("⬇️ Download this customer's predictions", r.to_frame().T.to_csv(index=False).encode(),
+    st.download_button("Download this customer's predictions", r.to_frame().T.to_csv(index=False).encode(),
                        f"{r.customer_id}_predictions.csv", "text/csv")
 
 
-def page_customer_portal():
-    account = st.session_state["account"]
-    customer_id = account["customer_id"]
-    profile_age = account.get("age") or 35
-    profile_gender = account.get("gender") if account.get("gender") in C.GENDERS else "Other"
-    profile_region = account.get("region") if account.get("region") in C.REGIONS else "Central"
-    ui.hero(f"Welcome, {escape(account['display_name'])}",
-            "Your orders, shopping and personal spending at a glance.")
-    st.caption(f"Customer account · {customer_id}")
-
-    st.subheader("Place an order")
-    st.caption("Demo orders are recorded for your history and the retail analytics. No payment is processed.")
-    with st.form("place_order"):
-        a, b, c, d = st.columns(4)
-        product = a.text_input("Product name", placeholder="For example, Everyday tote")
-        category = b.selectbox("Category", C.CATEGORIES)
-        quantity = c.number_input("Quantity", min_value=1, max_value=25, value=1)
-        unit_price = d.number_input("Unit price", min_value=0.01, max_value=3000.0, value=80.0, step=1.0)
-        a, b, c = st.columns(3)
-        discount = a.select_slider("Discount", [0, .05, .1, .15, .2, .3], value=0.0,
-                                   format_func=lambda value: f"{value:.0%}")
-        payment = b.selectbox("Payment method", C.PAYMENTS)
-        c.caption(f"Profile: age {profile_age} · {profile_gender} · {profile_region}")
-        submitted = st.form_submit_button("Place demo order", type="primary")
-    if submitted:
-        try:
-            reference = get_reference_df()
-            category_history = reference[reference.category == category]
-            category_revenue = category_history.total_amount.sum()
-            profit_rate = (category_history.profit_margin.sum() / category_revenue
-                           if category_revenue else 0.1)
-            delivery_days = max(1, int(category_history.delivery_time_days.median())) if not category_history.empty else 5
-            shipping_cost = float(category_history.shipping_cost.mean()) if not category_history.empty else 6.0
-            amount = unit_price * quantity * (1 - discount)
-            order_id = accounts.create_order(
-                customer_id, product, category, unit_price, quantity, discount, payment, date.today(),
-                delivery_time_days=delivery_days, shipping_cost=shipping_cost,
-                profit_margin=amount * profit_rate, age=profile_age, gender=profile_gender,
-                region=profile_region,
-            )
-        except ValueError as exc:
-            st.error(str(exc))
-        else:
-            retraining.maybe_start_retraining()
-            st.success(f"Order {order_id} has been saved to your local order history.")
-            st.rerun()
-
-    history = pd.DataFrame(accounts.get_orders(customer_id))
-    st.subheader("Your analytics")
-    if history.empty:
-        for col, label, value, note in zip(
-            st.columns(3), ["Orders", "Lifetime spend", "Average order"], ["0", money(0), money(0)],
-            ["No orders yet", "Your saved purchases", "Your order average"],
-        ):
-            ui.kpi(col, label, value, note)
-        ui.callout("Your previous orders and personal analytics will appear here after your first demo order.")
-        return
-
-    history["order_date"] = pd.to_datetime(history["order_date"])
-    columns = st.columns(4)
-    ui.kpi(columns[0], "Orders", f"{len(history):,}")
-    ui.kpi(columns[1], "Lifetime spend", money(history.total_amount.sum()))
-    ui.kpi(columns[2], "Average order", money(history.total_amount.mean()))
-    favorite = history.groupby("category").total_amount.sum().idxmax()
-    ui.kpi(columns[3], "Top category", favorite, "by your recorded spend")
-    monthly = history.assign(month=history.order_date.dt.to_period("M").dt.to_timestamp())
-    trend = monthly.groupby("month", as_index=False).total_amount.sum()
-    mix = history.groupby("category", as_index=False).total_amount.sum()
-    left, right = st.columns(2)
-    left.plotly_chart(px.area(trend, x="month", y="total_amount", title="Your monthly spend",
-                              color_discrete_sequence=[C.CHAMPAGNE_GOLD]), width="stretch")
-    right.plotly_chart(px.pie(mix, names="category", values="total_amount", hole=.55,
-                              title="Your spending by category", color_discrete_sequence=C.PALETTE),
-                      width="stretch")
-    st.subheader("Previous orders")
-    visible = history.drop(columns=["returned"]).rename(columns={
-        "order_id": "Order", "product_name": "Product", "category": "Category",
-        "unit_price": "Unit price", "quantity": "Qty", "discount": "Discount",
-        "payment_method": "Payment", "order_date": "Date", "total_amount": "Total",
-        "return_date": "Return date",
-    })
-    visible["Status"] = np.where(history.returned.astype(bool), "Returned", "Not returned")
-    st.dataframe(visible, width="stretch", hide_index=True, column_config={
-        "Unit price": st.column_config.NumberColumn(format=f"{CUR}%.2f"),
-        "Discount": st.column_config.NumberColumn(format="percent"),
-        "Total": st.column_config.NumberColumn(format=f"{CUR}%.2f"),
-        "Date": st.column_config.DateColumn(),
-        "Return date": st.column_config.DateColumn(),
-    })
-    with st.expander("Return an order"):
-        eligible = history[history.returned == 0]
-        if eligible.empty:
-            st.caption("All your orders are already marked returned.")
-        for row in eligible.itertuples(index=False):
-            if st.button(f"Return {row.product_name} · {row.order_id}", key=f"return_{row.order_id}"):
-                try:
-                    accounts.mark_order_returned(customer_id, row.order_id)
-                except ValueError as exc:
-                    st.error(str(exc))
-                else:
-                    retraining.maybe_start_retraining()
-                    st.success(f"Order {row.order_id} marked as returned.")
-                    st.rerun()
-    st.download_button("Download your order history", visible.to_csv(index=False).encode(),
-                       "my_orders.csv", "text/csv")
-
-
 def page_segments():
-    ui.hero(" Segments & Actions", "Prioritise retention using churn risk, loyalty and revenue at risk.")
+    ui.hero("Segments & Actions", "Prioritise retention using churn risk, loyalty and revenue at risk.")
     a, b, c = st.columns(3)
     risk = a.multiselect("Churn risk band", ["High", "Medium", "Low"], default=["High", "Medium"])
     tiers = b.multiselect("Loyalty tier", LOYALTY_LABELS, default=LOYALTY_LABELS)
@@ -532,68 +359,12 @@ def page_segments():
         "revenue_at_risk": st.column_config.NumberColumn("Revenue at risk", format=f"{CUR}%.0f"),
         "total_spend": st.column_config.NumberColumn("Lifetime spend", format=f"{CUR}%.0f"),
         "next_purchase_date": st.column_config.DateColumn("Next purchase")})
-    st.download_button("⬇️ Download segment (CSV)", v.to_csv(index=False).encode(), "segment_customers.csv", "text/csv")
+    st.download_button("Download segment (CSV)", v.to_csv(index=False).encode(), "segment_customers.csv", "text/csv")
     with st.expander("Suggested playbook"):
         st.markdown("- **High risk + High loyalty:** personal outreach, loyalty reward.\n"
                     "- **High risk + Low loyalty:** win-back discount on their preferred category.\n"
                     "- **Low risk + High loyalty:** early access, referral programme.\n"
                     "- **Discount-sensitive:** time offers around the predicted next-purchase date.")
-
-
-def page_orders():
-    ui.hero("Orders & Returns", "Customer purchases and returns shared with the retail admin.")
-    status = accounts.get_state("training_status", default="waiting")
-    matured = accounts.get_matured_order_count()
-    trained = int(accounts.get_state("last_matured_count", default="0"))
-    new_matured = max(0, matured - trained)
-    return_labels = accounts.get_matured_return_count()
-    trained_returns = int(accounts.get_state("last_return_event_count", default="0"))
-    new_returns = max(0, return_labels - trained_returns)
-    stats = st.columns(4)
-    ui.kpi(stats[0], "Training status", status.title())
-    ui.kpi(stats[1], "All demo orders", f"{len(accounts.get_admin_orders()):,}")
-    ui.kpi(stats[2], "Matured local orders", f"{matured:,}")
-    ui.kpi(stats[3], "New training data", f"{new_matured:,} orders · {new_returns:,} returns",
-           "100 of either trigger a background retrain")
-    if status == "running":
-        ui.callout("The all-model training batch is running. Tasks with enough labels will be retrained; others "
-                   "retain their previous model. The active version remains available until the batch completes.")
-    elif status == "queued":
-        ui.callout("A full model retrain is queued.")
-    elif status == "failed":
-        ui.callout(f"Automatic retraining failed: {escape(accounts.get_state('training_error'))}")
-    elif status == "complete":
-        retained = sum(m.get("training_status") == "retained_previous" for m in MET.values())
-        detail = f" · {retained} models retained their prior version due to insufficient labels" if retained else ""
-        ui.callout(
-            f"Latest automatic training completed · model version "
-            f"{accounts.get_state('model_version')[:12]}{detail}.",
-            ok=retained == 0,
-        )
-    st.caption("All-model training starts after 100 new orders mature (180 days) or 100 returned orders have mature "
-               "180-day outcomes. Returns are saved immediately and become eligible when their outcomes mature.")
-
-    orders = pd.DataFrame(accounts.get_admin_orders())
-    if orders.empty:
-        st.info("Customer orders will appear here after customers place demo orders.")
-        return
-    orders["Status"] = np.where(orders.returned.astype(bool), "Returned", "Not returned")
-    orders = orders.drop(columns=["returned"]).rename(columns={
-        "order_id": "Order", "customer_id": "Customer ID", "display_name": "Customer",
-        "email": "Email", "product_name": "Product", "category": "Category",
-        "unit_price": "Unit price", "quantity": "Qty", "discount": "Discount",
-        "payment_method": "Payment", "order_date": "Date", "total_amount": "Total",
-        "return_date": "Return date",
-    })
-    st.dataframe(orders, width="stretch", hide_index=True, column_config={
-        "Unit price": st.column_config.NumberColumn(format=f"{CUR}%.2f"),
-        "Discount": st.column_config.NumberColumn(format="percent"),
-        "Total": st.column_config.NumberColumn(format=f"{CUR}%.2f"),
-        "Date": st.column_config.DateColumn(),
-        "Return date": st.column_config.DateColumn(),
-    })
-    st.download_button("Download all customer orders", orders.to_csv(index=False).encode(),
-                       "customer_orders.csv", "text/csv")
 
 
 def _return_row(bundle, p):
@@ -661,8 +432,8 @@ def _predict_one(models, key, frame):
 
 
 def page_whatif():
-    ui.hero(" What-if Lab", "Change inputs and watch the neural networks respond.")
-    t1, t2, t3 = st.tabs(["↩️ Order return-risk simulator", "👤 Customer scenario", "➕ New customer"])
+    ui.hero("What-if Lab", "Change inputs and watch the neural networks respond.")
+    t1, t2, t3 = st.tabs(["Order return-risk simulator", "Customer scenario", "New customer"])
     with t1:
         with st.form("ret"):
             a, b, c, d = st.columns(4)
@@ -685,7 +456,7 @@ def page_whatif():
         if go_btn:
             with st.spinner("Running the neural network…"):
                 from src.models import predict
-                model, bundle = get_models(MODEL_VERSION)["return_risk"]
+                model, bundle = get_model("return_risk")
                 x = _return_row(bundle, dict(cat=cat, price=price, qty=qty, disc=disc, pay=pay, reg=reg, deliv=deliv, ship=ship,
                                              age=age, gen=gen, n_prior=n_prior, past_ret=past_ret, month=month))
                 p = float(predict(model, bundle, to_matrix(x, bundle["features"]))[0])
@@ -695,9 +466,9 @@ def page_whatif():
             b.markdown(f'<div class="card"><h4>Compared with history</h4><div class="big">{p / DF.is_returned.mean():.1f}×</div>'
                        f'<div class="note">vs dataset average {DF.is_returned.mean():.1%}; the historical return rate for {cat} '
                        f'is {base:.1%}. Reliability: {ui.signal_badge(LEVEL["return_risk"])}</div></div>', unsafe_allow_html=True)
-            st.toast("Prediction ready", icon="✅")
+            st.toast("Prediction ready")
     with t2:
-        F = get_latest_features(DATA_VERSION)
+        F = get_latest_features()
         cid = st.selectbox("Customer", SCORES.customer_id.tolist(), key="wi_c")
         row = F.loc[cid].copy()
         a, b, c = st.columns(3)
@@ -714,10 +485,9 @@ def page_whatif():
         new[["n_orders", "recency_days", "total_spend", "orders_last_90d", "discount_share", "return_rate"]] = [n_o, rec, spend, o90, dshare, rr]
         new["avg_order_value"] = spend / max(n_o, 1)
         from src.models import predict
-        M = get_models(MODEL_VERSION)
 
         def run(key, r):
-            m, bdl = M[key]
+            m, bdl = get_model(key)
             return predict(m, bdl, to_matrix(pd.DataFrame([r]), bdl["features"]))
         base_c, new_c = float(run("churn", row)[0]), float(run("churn", new)[0])
         base_s, new_s = float(run("spending", row)[0]), float(run("spending", new)[0])
@@ -758,7 +528,7 @@ def page_whatif():
                 price=price, qty=quantity, disc=discount, margin=margin / 100, age=age, gen=gender,
                 reg=region, cat=category, pay=payment, deliv=delivery, ship=shipping, date=first_order_date,
             )
-            models = get_models(MODEL_VERSION)
+            models = {task["key"]: get_model(task["key"]) for task in TASKS}
             customer_row = _first_order_customer_row(p, models["churn"][1]["features"])
             order_row = _first_order_state_row(p, models["next_product"][1]["features"])
             churn = float(_predict_one(models, "churn", customer_row)[0])
@@ -799,15 +569,38 @@ def page_whatif():
             cols = st.columns(4)
             for i, task in enumerate(TASKS):
                 value, note = results[task["key"]]
-                ui.pred_card(cols[i % 4], task["icon"], f"#{task['id']} {task['title']}",
-                             task["question"], value, note, LEVEL[task["key"]])
+                ui.pred_card(cols[i % 4], f"#{task['id']} {task['title']}", task["question"],
+                             value, note, LEVEL[task["key"]])
             ui.callout("This is an in-session cold-start prediction based on the profile and assumed first order; "
                        "it does not save a customer record or change the training data. Category recommendations "
                        "are used because this dataset cannot support reliable item-level recommendations.")
 
 
 def page_models():
-    ui.hero(" Model Lab", "Architecture, training curves, evaluation and honest comparison with baselines.")
+    ui.hero("Model Lab", "Architecture, training curves, evaluation and comparison with baselines.")
+    if st.session_state.pop("training_complete", None) is not None:
+        st.success(f"Models retrained with seed {st.session_state['trained_seed']}.")
+    with st.expander("Retrain models", expanded=False):
+        seed = st.number_input("Training seed", min_value=0, max_value=2_147_483_647,
+                               value=int(META.get("seed", C.SEED)), step=1)
+        st.caption("Retraining updates all 11 models and their evaluation metrics. It may take a few minutes.")
+        if st.button("Retrain all 11 models", type="primary"):
+            from src.pipeline import load_models, score_customers, train_all
+
+            with st.spinner(f"Training models with seed {int(seed)}…"):
+                get_model.clear()
+                train_all(df=DF, seed=int(seed))
+                _, extra = score_customers(DF, load_models())
+                metrics_path = C.REPORTS_DIR / "metrics.json"
+                report = json.loads(metrics_path.read_text())
+                report["meta"].update(extra)
+                metrics_path.write_text(json.dumps(report, indent=2))
+                get_scores.clear()
+                get_metrics.clear()
+                get_curves.clear()
+            st.session_state["trained_seed"] = int(seed)
+            st.session_state["training_complete"] = True
+            st.rerun()
     rows = []
     for t in TASKS:
         m = MET[t["key"]]
@@ -819,27 +612,22 @@ def page_models():
             head, base = f"MAE {m['mae']:.1f} · R²log {m['r2_log']:.3f}", f"MAE {m['baseline_mae']:.1f}"
         rows.append({"#": t["id"], "Task": t["title"], "Level": t["level"], "Type": t["type"], "MLP": head,
                      "Baseline": base, "Reliability": {"None": "○ chance", "Weak": "◐ weak", "Useful": "✓ useful"}[m["signal"]],
-                     "Training status": m.get("training_status", "baseline"),
-                     "Train / Test": f"{m['n_train'] + m['n_val']:,} / {m['n_test']:,}",
-                     "Params": f"{m['params']:,}"})
+                     "Train / Test": f"{m['n_train'] + m['n_val']:,} / {m['n_test']:,}", "Params": f"{m['params']:,}"})
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     st.subheader("Why most models are close to chance")
-    dg = get_diagnostics(DATA_VERSION)
+    dg = get_diagnostics()
     k = st.columns(4)
     ui.kpi(k[0], "Past vs future orders", f"r = {dg['corr_orders']:.3f}", "0 = no relationship")
     ui.kpi(k[1], "Gap between orders CV", f"{dg['gap_cv']:.2f}", "≈1 = memoryless / random")
     ui.kpi(k[2], "Same category twice in a row", f"{dg['cat_repeat']:.1%}", f"chance = {dg['cat_chance']:.1%}")
     ui.kpi(k[3], "Customers whose age changes", f"{dg['age_changes']:.0%}", "attributes not stable")
-    ui.callout("Gradient-boosted trees reach the same ~0.50 AUC on churn as the MLP, so this is a property of the data "
-               "(orders look randomly assigned to customer IDs), not of the network. Return risk is the exception: it "
-               "depends on the product category, so it shows a weak but real signal. Swap in a real transaction dataset "
-               "(e.g. Online Retail II) and rerun <code>python run_pipeline.py</code> to see the same 11 models learn real behaviour.")
+    ui.callout("The dataset has weak customer-behaviour signal, which limits how accurately the models can forecast "
+               "future activity. More consistent repeat-purchase data is needed to improve those forecasts.")
     st.subheader("Inspect a model")
     key = st.selectbox("Model", [t["key"] for t in TASKS], format_func=lambda k: f"#{TASK_BY_KEY[k]['id']} {TASK_BY_KEY[k]['title']}")
-    t, m, cv = TASK_BY_KEY[key], MET[key], get_curves(MODEL_VERSION)[key]
+    t, m, cv = TASK_BY_KEY[key], MET[key], get_curves()[key]
     st.markdown(f"**{t['question']}**  \nTarget: {t['target']}")
-    model_dir = C.MODELS_DIR / "versions" / MODEL_VERSION if MODEL_VERSION else C.MODELS_DIR
-    bundle_hidden = " → ".join(str(h) for h in __import__("joblib").load(model_dir / f"{key}_bundle.joblib")["hidden"])
+    bundle_hidden = " → ".join(str(h) for h in __import__("joblib").load(C.MODELS_DIR / f"{key}_bundle.joblib")["hidden"])
     st.markdown(f"Architecture: **Input({m['n_features']}) → Dense({bundle_hidden}) with BatchNorm + ReLU + Dropout → "
                 f"{ {'binary': 'Sigmoid(1)', 'multiclass': 'Softmax', 'regression': 'Linear(1)'}[t['type']] }** · "
                 f"{m['params']:,} parameters · stopped after {m['epochs_run']} epochs · {ui.signal_badge(m['signal'])}",
@@ -890,45 +678,14 @@ def page_models():
         st.markdown(f"- Customer models use snapshots **{', '.join(META['train_snapshots'])}** for training and "
                     f"**{META['test_snapshot']}** as the hold-out; features use orders ≤ snapshot, targets use the next "
                     f"{META['horizon_days']} days, so no training label overlaps the test period.\n"
-                    f"- Order-level models use training through **{META.get('order_train_end', C.ORDER_TRAIN_END)}** "
-                    f"and test from **{META.get('order_test_start', C.ORDER_TEST_START)}**, with an embargo gap.\n"
-                    f"- Return-risk hold-out runs **{META.get('return_test_start', C.ORDER_TEST_START)}** through "
-                    f"**{META.get('return_test_end', META['end_date'])}**; live-order evaluation excludes orders "
-                    "without mature 180-day outcomes.\n"
-                    "- 15% of training customers are held out for early stopping. The decision threshold is tuned on that "
-                    "validation set only.")
+                    f"- Order-level models are split by date with an embargo gap ({C.ORDER_TRAIN_END} → {C.ORDER_TEST_START}).\n"
+                    "- 15% of training customers are held out for early stopping and binary thresholds are selected "
+                    "for accuracy on that validation set only.")
 
 
 def page_about():
-    account = st.session_state["account"]
-    if account["role"] == "customer":
-        ui.hero("About your customer space", "A simple place to shop and understand your purchases.")
-        st.markdown("""
-### What you can do
-- Place demo orders and review your previous orders.
-- Mark an order returned and see the updated status in your order history.
-- Explore your spending over time and by product category.
-- Download a copy of your locally saved order history.
-
-Your profile, orders, and return status are stored in the shared local app database and are visible to retail admins.
-This prototype does not connect to a real catalogue, inventory, or payment service.
-""")
-        return
-
-    ui.hero("ℹ About NexusRetail", "Retail operations and neural-driven customer intelligence.")
+    ui.hero(" About this project", "Pipeline, methodology and how to reproduce.")
     st.markdown("""
-### Retail admin features
-- **Overview:** revenue, profit, orders, customer counts, returns, discounts, trends, and model reliability.
-- **Orders & Returns:** view and download customer order/return records and automatic training status.
-- **EDA Explorer:** filter and explore product, customer, discount, return, and data-quality patterns.
-- **Customer 360:** customer history and all 11 predictions, including spending, profit, churn, returns, loyalty,
-  active duration, recommendation, discount sensitivity, and next purchase.
-- **Segments & Actions:** prioritize customers by churn risk, loyalty, and expected revenue at risk.
-- **What-if Lab:** simulate return risk, adjust existing-customer assumptions, and score a new customer's first order.
-- **Model Lab:** inspect hold-out metrics, training curves, baselines, diagnostics, and model details.
-- **About:** methodology, limitations, and setup.
-
-### Pipeline and methodology
 **Pipeline:** raw orders → cleaning & EDA → customer snapshot / order-level features → 11 Keras MLPs → temporal evaluation →
 scoring of all customers → this dashboard.
 
@@ -939,46 +696,26 @@ early stopping and learning-rate decay. Regression targets use a signed log tran
 - *Revenue lost if a customer leaves* = churn probability × the revenue the customer would generate if retained (a separate MLP).
 - *Frequently bought items* and *next product* are predicted at **category** level, because 24,912 product IDs appear on only
   34,500 orders (almost every product is bought once, so item-level recommendation is not learnable).
-- *Return risk* is scored per order (features known at purchase time) and averaged for customer view. Live training
-  excludes orders without mature 180-day outcomes, so recent unreturned orders are not mislabeled as negatives.
+- *Return risk* is scored per order (features known at purchase time) and averaged for customer view.
 - All forecasts are for the 180 days after the last date in the data.
-- Customer orders are included in training data. A background batch attempts all 11 models after 100 new local orders
-  have mature 180-day outcome windows, or 100 returned orders have mature 180-day outcome windows. A task without
-  enough valid labels retains its previous model; the active version stays available until the batch completes.
 
 **Reproduce:** `pip install -r requirements.txt` → `python run_pipeline.py` → `streamlit run app/streamlit_app.py`
 """)
 
 
-account = st.session_state["account"]
-if account["role"] == "admin":
-    pages = {
-        "Overview": page_overview, "EDA Explorer": page_eda, "Customer 360": page_customer,
-        "Segments & Actions": page_segments, "Orders & Returns": page_orders, "What-if Lab": page_whatif,
-        "Model Lab": page_models, "About": page_about,
-    }
-else:
-    pages = {"My shop": page_customer_portal, "About": page_about}
-
-if st.session_state.get("nav") not in pages:
-    st.session_state["nav"] = next(iter(pages))
+PAGES = {" Overview": page_overview, " EDA Explorer": page_eda, " Customer 360": page_customer,
+         " Segments & Actions": page_segments, " What-if Lab": page_whatif, " Model Lab": page_models,
+         " About": page_about}
 
 with st.sidebar:
     st.markdown("## NexusRetail")
-    st.markdown(f'<div class="sidebar-user">{escape(account["display_name"])}</div>', unsafe_allow_html=True)
-    st.caption(account["role"].title())
-    page = st.radio("Navigate", list(pages), key="nav", label_visibility="collapsed")
+    st.caption("Neural Driven Customer Intelligence")
+    page = st.radio("Navigate", list(PAGES), key="nav", label_visibility="collapsed")
     st.divider()
-    if account["role"] == "admin":
-        st.caption(f"Data: {META['start_date']} → {META['end_date']}")
-        st.caption(f"{META['n_orders']:,} orders · {META['n_customers']:,} customers")
-        st.markdown(f"{ui.signal_badge('Useful')} {ui.signal_badge('Weak')} {ui.signal_badge('None')}",
-                    unsafe_allow_html=True)
-        st.caption("Reliability of each model on unseen data")
-    if st.button("Sign out", width="stretch"):
-        del st.session_state["account"]
-        st.session_state.pop("nav", None)
-        st.rerun()
+    st.caption(f"Data: {META['start_date']} → {META['end_date']}")
+    st.caption(f"{META['n_orders']:,} orders · {META['n_customers']:,} customers")
+    st.markdown(f"{ui.signal_badge('Useful')} {ui.signal_badge('Weak')} {ui.signal_badge('None')}", unsafe_allow_html=True)
+    st.caption("Reliability of each model on unseen data")
 
-pages[page]()
+PAGES[page]()
 ui.footer()

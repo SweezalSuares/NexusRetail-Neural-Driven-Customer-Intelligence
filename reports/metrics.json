@@ -12,6 +12,7 @@
     "next_purchase_cap": 120,
     "n_orders": 34500,
     "n_customers": 7903,
+    "seed": 42,
     "churn_q_low": 0.34897022843360903,
     "churn_q_high": 0.38210409283638
   },
@@ -27,11 +28,11 @@
       "params": 6593,
       "roc_auc": 0.5017041292999669,
       "pr_auc": 0.339664177939249,
-      "f1": 0.5075934579439252,
-      "precision": 0.3401174168297456,
-      "recall": 1.0,
-      "accuracy": 0.3401174168297456,
-      "threshold": 0.05,
+      "f1": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.6597521200260926,
+      "threshold": 0.5299999999999999,
       "prevalence": 0.3401174168297456,
       "roc_auc_ci": [
         0.48998934236003333,
@@ -40,12 +41,13 @@
       "baseline_roc_auc": 0.5027022556753626,
       "baseline_pr_auc": 0.3368741518051527,
       "baseline_name": "Logistic Regression",
+      "threshold_objective": "validation_accuracy",
       "signal": "None",
       "signal_note": "ROC-AUC 0.502 (95% CI 0.49-0.52; 0.50 = coin flip)",
       "id": 1,
       "title": "Churn Prediction",
       "level": "Customer",
-      "seconds": 30.4
+      "seconds": 17.7
     },
     "revenue_loss": {
       "key": "revenue_loss",
@@ -71,7 +73,7 @@
       "id": 2,
       "title": "Revenue Lost if Customer Leaves",
       "level": "Customer",
-      "seconds": 19.1
+      "seconds": 15.0
     },
     "spending": {
       "key": "spending",
@@ -97,7 +99,7 @@
       "id": 3,
       "title": "Customer Spending",
       "level": "Customer",
-      "seconds": 12.8
+      "seconds": 9.7
     },
     "profit": {
       "key": "profit",
@@ -123,7 +125,7 @@
       "id": 4,
       "title": "Customer Profit",
       "level": "Customer",
-      "seconds": 21.1
+      "seconds": 16.0
     },
     "fav_category": {
       "key": "fav_category",
@@ -137,6 +139,8 @@
       "accuracy": 0.24713325425069196,
       "top3_accuracy": 0.5941083432186635,
       "macro_f1": 0.06606841652906183,
+      "precision": 0.12466000578713553,
+      "recall": 0.1437088344830149,
       "baseline_accuracy": 0.22637406089363385,
       "majority_accuracy": 0.24851720047449585,
       "random_accuracy": 0.14285714285714285,
@@ -146,7 +150,7 @@
       "id": 5,
       "title": "Frequently Bought Items (Category)",
       "level": "Customer",
-      "seconds": 16.6
+      "seconds": 13.1
     },
     "return_risk": {
       "key": "return_risk",
@@ -159,11 +163,11 @@
       "params": 849,
       "roc_auc": 0.5734469630101792,
       "pr_auc": 0.06864876036244714,
-      "f1": 0.113856740694401,
-      "precision": 0.07137254901960784,
-      "recall": 0.28129829984544047,
-      "accuracy": 0.7572407883461868,
-      "threshold": 0.08,
+      "f1": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.9445586975149958,
+      "threshold": 0.49999999999999994,
       "prevalence": 0.055441302485004285,
       "roc_auc_ci": [
         0.552462887478063,
@@ -172,12 +176,13 @@
       "baseline_roc_auc": 0.5986748797407024,
       "baseline_pr_auc": 0.07584091020900224,
       "baseline_name": "Logistic Regression",
+      "threshold_objective": "validation_accuracy",
       "signal": "Weak",
       "signal_note": "ROC-AUC 0.573 (95% CI 0.55-0.59; 0.50 = coin flip)",
       "id": 6,
       "title": "Return / Refund Risk",
       "level": "Order",
-      "seconds": 35.4
+      "seconds": 26.5
     },
     "active_duration": {
       "key": "active_duration",
@@ -203,7 +208,7 @@
       "id": 7,
       "title": "Active Duration",
       "level": "Customer",
-      "seconds": 18.9
+      "seconds": 15.0
     },
     "next_product": {
       "key": "next_product",
@@ -217,6 +222,8 @@
       "accuracy": 0.17537851478010094,
       "top3_accuracy": 0.4965753424657534,
       "macro_f1": 0.08929769756280792,
+      "precision": 0.09628286898316608,
+      "recall": 0.14052304803910542,
       "baseline_accuracy": 0.14924297043979812,
       "majority_accuracy": 0.1809661139149243,
       "random_accuracy": 0.14285714285714285,
@@ -226,7 +233,7 @@
       "id": 8,
       "title": "Next Product Recommendation",
       "level": "Order",
-      "seconds": 20.3
+      "seconds": 14.6
     },
     "discount": {
       "key": "discount",
@@ -243,7 +250,7 @@
       "precision": 0.5247133254250692,
       "recall": 1.0,
       "accuracy": 0.5247133254250692,
-      "threshold": 0.05,
+      "threshold": 0.4099999999999999,
       "prevalence": 0.5247133254250692,
       "roc_auc_ci": [
         0.49446941751689194,
@@ -252,12 +259,13 @@
       "baseline_roc_auc": 0.5083747164672795,
       "baseline_pr_auc": 0.5248604925240081,
       "baseline_name": "Logistic Regression",
+      "threshold_objective": "validation_accuracy",
       "signal": "None",
       "signal_note": "ROC-AUC 0.511 (95% CI 0.49-0.53; 0.50 = coin flip)",
       "id": 9,
       "title": "Discount Sensitivity",
       "level": "Customer",
-      "seconds": 21.4
+      "seconds": 15.9
     },
     "loyalty": {
       "key": "loyalty",
@@ -271,6 +279,8 @@
       "accuracy": 0.35055446836268755,
       "top3_accuracy": 1.0,
       "macro_f1": 0.2880673354034337,
+      "precision": 0.3262516565832049,
+      "recall": 0.3287099416023949,
       "baseline_accuracy": 0.35812133072407043,
       "majority_accuracy": 0.36764514024788,
       "random_accuracy": 0.3333333333333333,
@@ -280,7 +290,7 @@
       "id": 10,
       "title": "Customer Loyalty",
       "level": "Customer",
-      "seconds": 49.2
+      "seconds": 25.4
     },
     "next_purchase": {
       "key": "next_purchase",
@@ -306,7 +316,7 @@
       "id": 11,
       "title": "Next Purchase Prediction",
       "level": "Order",
-      "seconds": 38.1
+      "seconds": 27.8
     }
   }
 }

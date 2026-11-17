@@ -16,13 +16,6 @@ __pycache__/
 # Environment variables
 .env
 .env.*
-outputs/app_data.sqlite3
-outputs/app_data.sqlite3-shm
-outputs/app_data.sqlite3-wal
-outputs/retraining.log
-outputs/score_versions/
-models/versions/
-reports/versions/
 
 # IDE
 .vscode/
